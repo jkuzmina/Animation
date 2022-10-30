@@ -19,6 +19,7 @@
         android:layout_gravity="center"
         app:colors="@array/colors"
         app:fontSize="50dp"
+        app:fillType="sequential"
         app:lineWidth="20dp" />
 </FrameLayout>
 

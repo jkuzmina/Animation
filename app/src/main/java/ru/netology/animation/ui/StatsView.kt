@@ -11,7 +11,6 @@ import android.util.Log
 import android.view.View
 import android.view.animation.LinearInterpolator
 import androidx.core.content.withStyledAttributes
-import kotlinx.coroutines.delay
 import ru.netology.animation.R
 import ru.netology.animation.util.AndroidUtils
 import kotlin.math.min
@@ -33,6 +32,9 @@ class StatsView @JvmOverloads constructor(
 
     private var progress = 0F
     private var valueAnimator: ValueAnimator? = null
+    private var fillType = 0
+    private var totalProgress = 0
+    val MAX_PROGRESS = 1F
 
     init {
         context.withStyledAttributes(attrs, R.styleable.StatsView) {
@@ -40,6 +42,7 @@ class StatsView @JvmOverloads constructor(
             fontSize = getDimension(R.styleable.StatsView_fontSize, fontSize)
             val resId = getResourceId(R.styleable.StatsView_colors, 0)
             colors = resources.getIntArray(resId).toList()
+            fillType = getInteger(R.styleable.StatsView_fillType, 0)
         }
     }
 
@@ -74,14 +77,42 @@ class StatsView @JvmOverloads constructor(
         if (data.isEmpty()) {
             return
         }
+        if (fillType == 1) {
+            if (progress == MAX_PROGRESS && totalProgress < data.size - 1) {
+                totalProgress++
+                update()
+            }
+        }
 
-        var startFrom = -90F
+        var startFrom = 0F
+        when (fillType) {
+            0, 1 -> startFrom = -90F
+            2 -> startFrom = -45F
+        }
         for ((index, datum) in data.withIndex()) {
             val angle = 360F * datum
             paint.color = colors.getOrNull(index) ?: randomColor()
-            canvas.drawArc(oval, startFrom + progress * 360F, angle * progress, false, paint)
+            when (fillType) {
+                0 -> canvas.drawArc(oval, startFrom, angle * progress, false, paint)
+                1 -> {
+                    if (totalProgress >= index && totalProgress < index + 1) {
+                        canvas.drawArc(oval, startFrom, angle * progress, false, paint)
+                    } else {
+                        if (totalProgress >= index + 1)
+                            canvas.drawArc(oval, startFrom, angle, false, paint)
+                    }
+                }
+                2 -> {
+                    canvas.drawArc(oval, startFrom, angle * progress / 2, false, paint)
+                    canvas.drawArc(oval, startFrom, -angle * progress / 2, false, paint)
+                }
+            }
+            Log.d("startFrom progress angle", "$startFrom $progress $angle")
             startFrom += angle
+
+
         }
+
 
 
         canvas.drawText(
@@ -98,12 +129,13 @@ class StatsView @JvmOverloads constructor(
             it.cancel()
         }
         progress = 0F
-        valueAnimator = ValueAnimator.ofFloat(0F, 1F).apply {
+        valueAnimator = ValueAnimator.ofFloat(0F, MAX_PROGRESS).apply {
             addUpdateListener { anim ->
                 progress = anim.animatedValue as Float
+                Log.d("progress", anim.animatedValue.toString())
                 invalidate()
             }
-            duration = 1000
+            duration = 2000
             interpolator = LinearInterpolator()
         }.also {
             it.start()
